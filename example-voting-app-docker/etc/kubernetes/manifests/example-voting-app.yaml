@@ -1,0 +1,254 @@
+################################################################################
+#      Copyright (C) 2020        Sebastian Francisco Colomar Bauza             #
+#      SPDX-License-Identifier:  GPL-2.0-only                                  #
+################################################################################
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - 
+        env:
+        -
+          name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: POSTGRES_PASSWORD
+              name: postgres
+        -
+          name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              key: POSTGRES_USER
+              name: postgres
+        image: postgres:alpine
+        name: postgres
+        ports:
+        - 
+          containerPort: 5432
+          protocol: TCP        
+        volumeMounts:
+        - 
+          mountPath: /var/lib/postgresql/data
+          name: postgres
+      volumes:
+      - 
+        name: postgres
+        persistentVolumeClaim:
+          claimName: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - 
+        image: redis:alpine
+        name: redis
+        ports:
+        - 
+          containerPort: 6379
+          protocol: TCP        
+        volumeMounts:
+        - 
+          mountPath: /data
+          name: redis
+      volumes:
+      - 
+        name: redis
+        persistentVolumeClaim:
+          claimName: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: result
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: result
+  template:
+    metadata:
+      labels:
+        app: result
+    spec:
+      containers:
+      - 
+        image: academiaonline/example-voting-app:latest-result
+        name: result
+        ports:
+        - 
+          containerPort: 8080
+          protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vote
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vote
+  template:
+    metadata:
+      labels:
+        app: vote
+    spec:
+      containers:
+      - 
+        image: academiaonline/example-voting-app:latest-vote
+        name: vote
+        ports:
+        - 
+          containerPort: 8080
+          protocol: TCP        
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      containers:
+      - 
+        image: academiaonline/example-voting-app:latest-worker
+        name: worker
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /postgres
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /redis
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres
+stringData:
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_USER: postgres
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: db
+spec:
+  ports:
+  -
+    port: 5432
+    protocol: TCP
+  selector:
+    app: postgres
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+spec:
+  ports:
+  -
+    port: 6379
+    protocol: TCP
+  selector:
+    app: redis
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: result
+spec:
+  ports:
+  -
+    port: 8080
+    protocol: TCP
+  selector:
+    app: result
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vote
+spec:
+  ports:
+  -
+    port: 8080
+    protocol: TCP
+  selector:
+    app: vote
+  type: ClusterIP
+---
